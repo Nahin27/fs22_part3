@@ -61,11 +61,21 @@ app.delete('/api/persons/:id', (request, response) => {
 
 app.post('/api/persons', (request, response) => {
     const body = request.body
-    console.log(body)
+    const checkName = persons.find(person => body.name === person.name)
+    console.log(checkName)
 
     if(!body.name || !body.number) {
-        return response.status(400).send(`<p>Name or number cannot be empty</p>`)
+        return response.status(400).json({
+            error: 'name or number missing'
+        })
     }
+
+    if(checkName) {
+        return response.status(400).json({
+            error: 'the name already exists'
+        })
+    }
+    
     const person = {
         name: body.name,
         number: body.number,
