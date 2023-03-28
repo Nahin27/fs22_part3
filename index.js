@@ -1,7 +1,12 @@
 const express = require('express')
+const morgan = require('morgan')
 const app = express()
+morgan.token('requestBody', (req, res) => {
+    return JSON.stringify(req.body)
+})
 
 app.use(express.json())
+app.use(morgan(':method :url :status :res[content-length] - :response-time ms :requestBody'))
 
 let persons = [
     { 
@@ -26,26 +31,24 @@ let persons = [
     }
 ]
 
-const generateId = () => {
+const generateId = () => { //generates a random id for post requests
     return Math.floor(Math.random() * 1000000000)
 }
 
-console.log(generateId())
-
-app.get('/api/persons', (request, response) => {
+app.get('/api/persons', (request, response) => { // get request to api/persons
     response.json(persons)
 })
 
-app.get('/info', (request, response) => {
+app.get('/info', (request, response) => { // get request to /info
     const numOfPeople = `<h1>Phonebook has info for ${persons.length} people</h1>`
     const date = new Date()
     const currentTime = `<h1>${date}</h1>`
     response.send(`${numOfPeople}\n${currentTime}`)
 })
 
-app.get('/api/persons/:id', (request, response) => {
-    const id = Number(request.params.id)
-    const person = persons.find(person => person.id === id)
+app.get('/api/persons/:id', (request, response) => { // get request to each individual id
+    const id = Number(request.params.id) // gets the id from the url
+    const person = persons.find(person => person.id === id) // finds person with corresponding id
     if(person) {
         response.json(person)
     } else {
@@ -53,16 +56,15 @@ app.get('/api/persons/:id', (request, response) => {
     }
 })
 
-app.delete('/api/persons/:id', (request, response) => {
+app.delete('/api/persons/:id', (request, response) => { // deletes a person
     const id = Number(request.params.id)
     persons = persons.filter(person => person.id !== id)
     response.status(204).end()
 })
 
-app.post('/api/persons', (request, response) => {
+app.post('/api/persons', (request, response) => { // creates a new person
     const body = request.body
     const checkName = persons.find(person => body.name === person.name)
-    console.log(checkName)
 
     if(!body.name || !body.number) {
         return response.status(400).json({
