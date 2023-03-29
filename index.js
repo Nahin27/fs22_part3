@@ -1,5 +1,7 @@
+require('dotenv').config()
 const express = require('express')
 const morgan = require('morgan')
+const Person = require('./models/person')
 const app = express()
 const cors = require('cors')
 morgan.token('requestBody', (req, res) => {
@@ -11,85 +13,75 @@ app.use(express.static('build'))
 app.use(cors())
 app.use(morgan(':method :url :status :res[content-length] - :response-time ms :requestBody'))
 
-let persons = [
-    { 
-      "id": 1,
-      "name": "Arto Hellas", 
-      "number": "040-123456"
-    },
-    { 
-      "id": 2,
-      "name": "Ada Lovelace", 
-      "number": "39-44-5323523"
-    },
-    { 
-      "id": 3,
-      "name": "Dan Abramov", 
-      "number": "12-43-234345"
-    },
-    { 
-      "id": 4,
-      "name": "Mary Poppendieck", 
-      "number": "39-23-6423122"
-    }
-]
-
-const generateId = () => { //generates a random id for post requests
-    return Math.floor(Math.random() * 1000000000)
-}
-
 app.get('/api/persons', (request, response) => { // get request to api/persons
-    response.json(persons)
+    Person.find({}).then(persons => {
+        response.json(persons)
+    })
 })
 
 app.get('/info', (request, response) => { // get request to /info
-    const numOfPeople = `<h1>Phonebook has info for ${persons.length} people</h1>`
-    const date = new Date()
-    const currentTime = `<h1>${date}</h1>`
-    response.send(`${numOfPeople}\n${currentTime}`)
+    Person.find({}).then(persons => {
+        const numOfPeople = `<h1>phonebook has info for ${persons.length} person</h1>`
+        const date = new Date()
+        const currentTime = `<h1>${date}</h1>`
+        response.send(`${numOfPeople}\n${currentTime}`)
+    })
+
 })
 
 app.get('/api/persons/:id', (request, response) => { // get request to each individual id
-    const id = Number(request.params.id) // gets the id from the url
-    const person = persons.find(person => person.id === id) // finds person with corresponding id
-    if(person) {
-        response.json(person)
-    } else {
-        response.status(404).end()
-    }
+    Person.findById(request.params.id).then(person => {
+        if(person) {
+            response.json(person)
+        } else {
+            response.status(404).end()
+        }
+    }).catch(error => {
+        return response.status(400).send({error: 'error'})
+    })
 })
 
 app.delete('/api/persons/:id', (request, response) => { // deletes a person
-    const id = Number(request.params.id)
-    persons = persons.filter(person => person.id !== id)
-    response.status(204).end()
+    Person.findByIdAndRemove(request.params.id).then(result =>{
+        response.status(204).end()
+    }).catch(error => {
+        console.log(error)
+        return response.status(400).send({error: 'error'})
+    })
 })
 
 app.post('/api/persons', (request, response) => { // creates a new person
     const body = request.body
-    const checkName = persons.find(person => body.name === person.name)
 
     if(!body.name || !body.number) {
         return response.status(400).json({
             error: 'name or number missing'
         })
     }
-
-    if(checkName) {
-        return response.status(400).json({
-            error: 'the name already exists'
-        })
-    }
     
-    const person = {
+    const person = new Person({
         name: body.name,
-        number: body.number,
-        id: generateId(),
+        number: body.number
+    })
+
+    person.save().then(savedPerson => {
+        response.json(savedPerson)
+    })
+
+})
+
+app.put('/api/persons/:id', (req, res) => {
+    const body = req.body
+    const newPerson = {
+        name: body.name,
+        number: body.number
     }
 
-    persons = persons.concat(person)
-
-    response.json(person)
+    Person.findByIdAndUpdate(req.params.id, newPerson, {new: true}).then(updatedPerson => {
+        res.json(updatedPerson)
+    }).catch(error => {
+        res.status(400).send({error:'error'})
+    })
 })
 
 const PORT = process.env.PORT || 3001
